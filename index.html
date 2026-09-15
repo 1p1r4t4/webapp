@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="ca-ES-balear">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Juego de Tablas de Multiplicar</title>
+    <title>Joc de ses Taules de Multiplicar</title>
     <style>
         * {
             box-sizing: border-box;
@@ -154,6 +154,65 @@
             font-size: 40px;
             margin-bottom: 20px;
         }
+
+        .history-box {
+            background: #edf2f7;
+            border-radius: 16px;
+            padding: 14px 18px;
+            margin: 15px 0 20px 0;
+            text-align: left;
+        }
+
+        .history-box h3 {
+            margin: 0 0 8px 0;
+            font-size: 15px;
+            color: #4a5568;
+            text-align: center;
+        }
+
+        .best-score-line {
+            display: flex;
+            justify-content: space-between;
+            font-size: 16px;
+            font-weight: bold;
+            color: #c05621;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed #cbd5e0;
+        }
+
+        .last-scores-title {
+            font-size: 15px;
+            color: #2d3748;
+            margin-top: 4px;
+            margin-bottom: 6px;
+        }
+
+        .last-scores-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .last-score-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            border-radius: 10px;
+            padding: 8px 12px;
+            font-size: 15px;
+        }
+
+        .last-score-points {
+            font-weight: bold;
+            color: #2f855a;
+        }
+
+        .last-score-datetime {
+            font-size: 13px;
+            color: #a0aec0;
+        }
     </style>
 </head>
 <body>
@@ -161,21 +220,35 @@
 <div class="container">
     <!-- START SCREEN -->
     <div id="start-screen">
-        <h1>🚀 Reto de las Tablas</h1>
-        <p style="font-size: 18px; color: #4a5568; margin-bottom: 25px;">
-            ¡Responde tantas multiplicaciones como puedas antes de que se agote el tiempo!
+        <h1>🚀 Repte de ses Taules</h1>
+        <p style="font-size: 18px; color: #4a5568; margin-bottom: 20px;">
+            Respon tantes multiplicacions com puguis abans que s'acabi es temps!
         </p>
-        <button class="btn-main" onclick="startGame()">¡EMPEZAR JUEGO!</button>
+        <p style="font-size: 15px; color: #718096; margin-top: -10px; margin-bottom: 20px; font-weight: bold;">
+            ⏱️ Sa partida dura 60 segons (1 minut)
+        </p>
+
+        <div class="history-box" id="history-box-start" style="display:none;">
+            <h3>Es teus rècords</h3>
+            <div class="best-score-line">
+                <span>🏆 Sa teva millor puntuació:</span>
+                <span id="best-score-start">0</span>
+            </div>
+            <div class="last-scores-title">Darreres partides:</div>
+            <div class="last-scores-list" id="last-scores-start"></div>
+        </div>
+
+        <button class="btn-main" onclick="startGame()">COMENÇAR ES JOC!</button>
     </div>
 
     <!-- GAME SCREEN -->
     <div id="game-screen" class="hidden">
         <div class="stats-bar">
-            <div class="score-box">Puntos: <span id="score">0</span></div>
+            <div class="score-box">Punts: <span id="score">0</span></div>
             <div class="timer-box">⏱️ <span id="timer">60</span>s</div>
         </div>
 
-        <div id="streak" class="streak-badge">🔥 Racha: <span id="streak-count">0</span></div>
+        <div id="streak" class="streak-badge">🔥 Ratxa: <span id="streak-count">0</span></div>
 
         <div class="problem-display" id="problem">7 × 8</div>
 
@@ -189,12 +262,23 @@
 
     <!-- END SCREEN -->
     <div id="end-screen" class="hidden">
-        <div class="results-title">¡Tiempo agotado! 🎉</div>
+        <div class="results-title">S'ha acabat es temps! 🎉</div>
         <div class="stars" id="stars">⭐⭐⭐</div>
-        <p style="font-size: 18px; margin: 0; color: #718096;">Tu puntuación final:</p>
+        <p style="font-size: 18px; margin: 0; color: #718096;">Sa teva puntuació final:</p>
         <div class="final-score" id="final-score">0</div>
-        <p id="feedback-msg" style="font-size: 18px; margin-bottom: 25px; font-weight: bold; color: #4a5568;"></p>
-        <button class="btn-main" onclick="startGame()">JUGAR DE NUEVO 🔄</button>
+        <p id="feedback-msg" style="font-size: 18px; margin-bottom: 15px; font-weight: bold; color: #4a5568;"></p>
+
+        <div class="history-box">
+            <h3>Es teu historial</h3>
+            <div class="best-score-line">
+                <span>🏆 Sa teva millor puntuació:</span>
+                <span id="best-score-end">0</span>
+            </div>
+            <div class="last-scores-title">Darreres 3 partides:</div>
+            <div class="last-scores-list" id="last-scores-end"></div>
+        </div>
+
+        <button class="btn-main" onclick="startGame()">JUGAR UNA ALTRA VEGADA 🔄</button>
     </div>
 </div>
 
@@ -205,6 +289,101 @@
     let currentCorrectAnswer = 0;
     let streak = 0;
     let isClickable = true;
+
+    const STORAGE_KEY = 'tablesMultiplicarHistorial';
+
+    function loadHistory() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return { best: 0, last: [] };
+            const parsed = JSON.parse(raw);
+            let lastArr = Array.isArray(parsed.last) ? parsed.last : [];
+            // Compatibilitat amb sa versió anterior, que guardava només es número de punts
+            lastArr = lastArr.map(entry => {
+                if (typeof entry === 'number') {
+                    return { score: entry, date: null };
+                }
+                return entry;
+            });
+            return {
+                best: parsed.best || 0,
+                last: lastArr
+            };
+        } catch (e) {
+            return { best: 0, last: [] };
+        }
+    }
+
+    function saveHistory(history) {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+        } catch (e) {
+            // Si el dispositiu no permet localStorage (mode privat, etc.), es continua sense guardar.
+        }
+    }
+
+    function formatDateTime(isoString) {
+        if (!isoString) return 'Data no disponible';
+        try {
+            const d = new Date(isoString);
+            const dateStr = d.toLocaleDateString('ca-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const timeStr = d.toLocaleTimeString('ca-ES', { hour: '2-digit', minute: '2-digit' });
+            return `${dateStr} · ${timeStr}`;
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function renderScoresList(containerId, lastArr) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = '';
+        lastArr.forEach(entry => {
+            const item = document.createElement('div');
+            item.className = 'last-score-item';
+
+            const pointsSpan = document.createElement('span');
+            pointsSpan.className = 'last-score-points';
+            pointsSpan.innerText = entry.score + ' punts';
+
+            const dateSpan = document.createElement('span');
+            dateSpan.className = 'last-score-datetime';
+            dateSpan.innerText = formatDateTime(entry.date);
+
+            item.appendChild(pointsSpan);
+            item.appendChild(dateSpan);
+            container.appendChild(item);
+        });
+    }
+
+    function renderHistoryOnStart() {
+        const history = loadHistory();
+        const box = document.getElementById('history-box-start');
+        if (history.last.length === 0) {
+            box.style.display = 'none';
+            return;
+        }
+        box.style.display = 'block';
+        document.getElementById('best-score-start').innerText = history.best;
+        renderScoresList('last-scores-start', history.last);
+    }
+
+    function updateAndRenderHistoryOnEnd(newScore) {
+        const history = loadHistory();
+
+        // Actualitzar millor puntuació
+        if (newScore > history.best) {
+            history.best = newScore;
+        }
+
+        // Afegir sa nova puntuació (amb data i hora) al principi i mantenir només ses darreres 3
+        history.last.unshift({ score: newScore, date: new Date().toISOString() });
+        history.last = history.last.slice(0, 3);
+
+        saveHistory(history);
+
+        document.getElementById('best-score-end').innerText = history.best;
+        renderScoresList('last-scores-end', history.last);
+    }
 
     function startGame() {
         score = 0;
@@ -322,19 +501,24 @@
         document.getElementById('final-score').innerText = score;
 
         let starsText = '⭐';
-        let feedback = '¡Buen intento! Sigue practicando.';
+        let feedback = 'Bon intent! Segueix practicant.';
 
         if (score >= 150) {
             starsText = '⭐⭐⭐';
-            feedback = '¡INCREÍBLE! ¡Eres un maestro de las tablas!';
+            feedback = 'INCREÏBLE! Ets un mestre de ses taules!';
         } else if (score >= 80) {
             starsText = '⭐⭐';
-            feedback = '¡Muy bien! ¡Buen trabajo!';
+            feedback = 'Molt bé! Bona feina!';
         }
 
         document.getElementById('stars').innerText = starsText;
         document.getElementById('feedback-msg').innerText = feedback;
+
+        updateAndRenderHistoryOnEnd(score);
     }
+
+    // A l'obrir sa pàgina, si ja hi ha historial guardat, es mostra dins sa pantalla d'inici
+    renderHistoryOnStart();
 </script>
 
 </body>
